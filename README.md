@@ -256,7 +256,43 @@ Para producción, configura Hive con MySQL or PostgreSQL como metastore.
 
 Asegúrate de que Hadoop esté corriendo antes de iniciar Hive. 
 
-# Configuracion Apache Hive en servidor VPS IP_PUBLICA
+## 🧪 Paso 9. Prueba funcionalidad de Hive
+
+### 🔁 Inicializar el esquema del metastore (si no lo has hecho)
+
+1. Remover la existencia de metastore database
+```bash
+rm -rf metastore_db/
+```
+2. Inicializar
+```bash
+schematool -initSchema -dbType derby
+```
+### ▶️ Iniciar HiveServer2
+
+Ejecuta HiveServer2 en una nueva terminal:
+
+```bash
+hiveserver2 &
+```
+O para ver logs en tiempo real:
+```bash
+nohup hiveserver2 > hiveserver2.log 2>&1 &
+```
+### ▶️ Crear una base de datos y poner en uso, crear una tabla, insertar datos y realizar la consulta respectiva. 
+
+Desde tu cliente remoto: 
+```bash
+SHOW DATABASES;
+CREATE DATABASE test_remote;
+USE test_remote;
+CREATE TABLE prueba (id INT, nombre STRING);
+INSERT INTO prueba VALUES (1, 'Hola desde remoto');
+SELECT * FROM prueba;
+```
+Si funciona, ¡todo está listo!
+
+# Modo Avanzado. Configuracion Apache Hive en servidor VPS IP_PUBLICA
 
 ### ✅ Requisitos previos 
 
@@ -272,6 +308,55 @@ Inicia sesión en tu servidor o en la terminal de windows:
 ```bash
 ssh hadoop@< IP_PUBLICA >
 ```
+
+Abrir el Archivo core-site.xml de Hadoop configuración:
+```bash
+sudo nano $HADOOP_HOME/etc/hadoop/core-site.xml
+```
+
+Agregar estas propiedades si no existen al final dentro de < configuration> ... < /configuration>:
+
+```bash
+<property>
+  <name>hadoop.proxyuser.hadoop.hosts</name>
+  <value>*</value>
+</property>
+
+<property>
+  <name>hadoop.proxyuser.hadoop.groups</name>
+  <value>*</value>
+</property>
+
+```
+Editar yarn-site.xml
+```bash
+sudo nano $HADOOP_HOME/etc/hadoop/yarn-site.xml
+```
+Agrega Dentro de las etiquetas < configuration >...</ configuration >:
+```bash
+<property>
+  <name>yarn.log-aggregation-enable</name>
+  <value>true</value>
+</property>
+
+<property>
+  <name>yarn.log.server.url</name>
+  <value>http://localhost:19888/jobhistory/logs</value>
+  <!-- value>http://0.0.0.0:19888/jobhistory/logs</value -->
+</property>
+
+<property>
+  <name>yarn.nodemanager.remote-app-log-dir</name>
+  <value>/tmp/logs</value>
+</property>
+
+<property>
+  <name>yarn.nodemanager.remote-app-log-dir-suffix</name>
+  <value>logs</value>
+</property>
+
+```
+
 Ve al directorio de configuración de Hive:
 
 ```bash
@@ -282,13 +367,6 @@ Edita (o crea) el archivo hive-site.xml:
 ```bash
 sudo nano hive-site.xml
 ```
-Agregar al final dentro de < configuration > ... < /configuration >:
-```bash
-  <property>
-    <name>javax.jdo.option.ConnectionDriverName</name>
-    <value>org.apache.derby.jdbc.EmbeddedDriver</value>
-  </property>
-```
 Agregar 0.0.0.0 < configuration > ... < /configuration >
 ```bash
   <!-- HiveServer2: escuchar en todas las interfaces -->
@@ -296,6 +374,13 @@ Agregar 0.0.0.0 < configuration > ... < /configuration >
     <name>hive.server2.thrift.bind.host</name>
     <value>0.0.0.0</value>
     <description>Permitir conexiones desde cualquier IP</description>
+  </property>
+```
+Agregar al final dentro de < configuration > ... < /configuration >:
+```bash
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.apache.derby.jdbc.EmbeddedDriver</value>
   </property>
 ```
 Crea el directorio temporal:
@@ -307,16 +392,11 @@ chmod 777 /tmp/hive  # Solo en desarrollo
 
 ## 🔁 Paso 2: Inicializar el esquema del metastore (si no lo has hecho)
 
-1. Detener any Hive or Derby 
-
-```bash
-schematool -initSchema -dbType derby
-```
-2. Remover la existencia de metastore database
+1. Remover la existencia de metastore database
 ```bash
 rm -rf metastore_db/
 ```
-3. Inicializar
+2. Inicializar
 ```bash
 schematool -initSchema -dbType derby
 ```
