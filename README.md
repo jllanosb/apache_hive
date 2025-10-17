@@ -106,7 +106,7 @@ su -u hadoop
 Ingresar su contraseña
 
 ## Descargar Apache Hive
-Ve al sitio oficial de Apache Hive (https://hive.apache.org/general/downloads/) y copia el enlace de la versión estable más reciente compatible con tu Hadoop.
+Ve al sitio oficial de [Apache Hive](https://hive.apache.org/general/downloads/) y copia el enlace de la versión estable más reciente compatible con tu Hadoop.
 
 Moverse a la raiz
 ```bash
@@ -193,7 +193,9 @@ Busca y modifica (o agrega) las siguientes propiedades dentro de < configuration
   <value/>
   <description>URI del metastore (vacío para modo embebido)</description>
 </property>
-
+```
+Agrega al final de < configuration > ... < /configuration > :
+```bash
 <property>
   <name>system:java.io.tmpdir</name>
   <value>/tmp/hive-java</value>
@@ -253,6 +255,170 @@ rm -rf metastore_db/*.lck
 Para producción, configura Hive con MySQL or PostgreSQL como metastore. 
 
 Asegúrate de que Hadoop esté corriendo antes de iniciar Hive. 
+
+# Configuracion Apache Hive en servidor VPS IP_PUBLICA
+
+### ✅ Requisitos previos 
+
+- Hadoop ya está instalado y corriendo en < IP_PUBLICA >.
+- Hive ya está instalado en el mismo servidor (siguiendo buenas prácticas, con el mismo usuario que Hadoop, ej. hadoop).
+- El firewall del servidor permite el puerto 10000 (o el que uses para HiveServer2).
+- Tienes acceso SSH al servidor como el usuario que administra Hadoop/Hive.
+
+## 🔧 Paso 1: Configurar hive-site.xml para modo servidor
+
+Inicia sesión en tu servidor o en la terminal de windows:
+
+```bash
+ssh hadoop@< IP_PUBLICA >
+```
+Ve al directorio de configuración de Hive:
+
+```bash
+cd $HIVE_HOME/conf
+```
+
+Edita (o crea) el archivo hive-site.xml:
+```bash
+sudo nano hive-site.xml
+```
+Asegúrate de incluir al menos las siguientes propiedades dentro de < configuration > ... < /configuration >:
+```bash
+  <!-- Directorio del warehouse en HDFS -->
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/user/hive/warehouse</value>
+    <description>Ubicación del warehouse en HDFS</description>
+  </property>
+
+  <!-- Metastore embebido con Derby (solo para pruebas) -->
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:;databaseName=metastore_db;create=true</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.apache.derby.jdbc.EmbeddedDriver</value>
+  </property>
+```
+Asegúrate de incluir al menos las siguientes propiedades dentro de < configuration > ... < /configuration >
+```bash
+  <!-- HiveServer2: escuchar en todas las interfaces -->
+  <property>
+    <name>hive.server2.thrift.bind.host</name>
+    <value>0.0.0.0</value>
+    <description>Permitir conexiones desde cualquier IP</description>
+  </property>
+
+  <property>
+    <name>hive.server2.thrift.port</name>
+    <value>10000</value>
+  </property>
+
+  <!-- Opcional: desactivar autenticación simple (solo para desarrollo) -->
+  <property>
+    <name>hive.server2.authentication</name>
+    <value>NONE</value>
+  </property>
+
+  <!-- Directorio temporal local (evita errores de /tmp) -->
+  <property>
+    <name>hive.exec.scratchdir</name>
+    <value>/tmp/hive</value>
+  </property>
+```
+Crea el directorio temporal:
+
+```bash
+mkdir -p /tmp/hive
+chmod 777 /tmp/hive  # Solo en desarrollo
+```
+
+## 🔁 Paso 2: Inicializar el esquema del metastore (si no lo has hecho)
+
+```bash
+schematool -initSchema -dbType derby
+```
+## ▶️ Paso 3: Iniciar HiveServer2
+
+Ejecuta HiveServer2 en segundo plano (o en una sesión screen/tmux):
+
+```bash
+hiveserver2 &
+```
+O para ver logs en tiempo real:
+```bash
+nohup hiveserver2 > hiveserver2.log 2>&1 &
+```
+
+Verifica que esté escuchando en el puerto 10000:
+```bash
+netstat -tuln | grep 10000
+# Deberías ver: tcp6 0 0 :::10000 :::* LISTEN
+```
+
+## 🔥 Paso 4: Abrir el puerto 10000 (Si y solo tienes activado el Firewall)
+
+Si usas ufw (firewall de Ubuntu):
+
+```bash
+sudo ufw allow 10000/tcp
+sudo ufw reload
+```
+
+Si usas iptables o un firewall de red (como en la nube), asegúrate de que el puerto 10000 esté abierto en el grupo de seguridad del servidor (por ejemplo, en AWS, GCP, etc.).
+
+## 💻 Paso 5: Conectarte desde una máquina remota
+
+Desde tu computadora local (no el servidor), puedes usar Beeline si tienes Hive instalado, o cualquier cliente JDBC. 
+### Opción A: Usar Beeline (desde otra máquina con Hive) 
+```bash
+beeline -u "jdbc:hive2://<IP_PUBLICA>:10000"
+```
+Deberías ver:
+```bash
+Connecting to jdbc:hive2://<IP_PUBLICA>:10000
+Connected to: Apache Hive (version ...)
+Driver: Hive JDBC (version ...)
+Transaction isolation: TRANSACTION_REPEATABLE_READ
+0: jdbc:hive2://161.132.54.162:10000>
+```
+### Opción B: Usar DBeaver, SQuirreL SQL, etc.
+
+- Driver: Hive JDBC (hive-jdbc-*.jar)
+- URL: jdbc:hive2://< IP_PUBLICA >:10000
+- Usuario/contraseña: dejar en blanco (si usas authentication=NONE)
+
+# 🧪 Prueba rápida 
+
+Desde tu cliente remoto: 
+```bash
+SHOW DATABASES;
+CREATE DATABASE test_remote;
+USE test_remote;
+CREATE TABLE prueba (id INT, nombre STRING);
+INSERT INTO prueba VALUES (1, 'Hola desde remoto');
+SELECT * FROM prueba;
+```
+Si funciona, ¡todo está listo!
+
+## 🛡️ Recomendaciones de seguridad (para producción)
+1. No uses Derby en producción: cambia a MySQL o PostgreSQL como metastore.
+2. Habilita autenticación:
+Edita el archivo hive-site.xml:
+```bash
+sudo nano hive-site.xml
+```
+Agregar o modifica:
+```bash
+<property>
+  <name>hive.server2.authentication</name>
+  <value>PAM</value> <!-- o LDAP, Kerberos -->
+</property>
+```
+3. Restringe el acceso por IP en el firewall.
+4. Usa TLS si envías datos sensibles.
 
 # Autor
  ® Jaime Llanos Bardales
