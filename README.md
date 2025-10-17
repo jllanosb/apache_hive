@@ -61,9 +61,8 @@ Antes de instalar Hive, asegúrate de tener lo siguiente:
 2. Java JDK 8 o 11 (Hive no es compatible con Java 17+ en versiones antiguas; para Hive 3.x se recomienda Java 8 o 11)
 3. Apache Hadoop instalado y funcionando (versión 3.x recomendada)
 
-```rmarkdown
 Visitar el repositorio de [Instalacion Apache Hadoop](https://github.com/jllanosb/apache-hadoop)
-```
+
 4. Usuario sin privilegios de root con permisos sudo
 
 # 🔧 Paso 1. Verificar requisitos
