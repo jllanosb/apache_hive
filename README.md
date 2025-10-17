@@ -61,9 +61,8 @@ Antes de instalar Hive, asegúrate de tener lo siguiente:
 2. Java JDK 8 o 11 (Hive no es compatible con Java 17+ en versiones antiguas; para Hive 3.x se recomienda Java 8 o 11)
 3. Apache Hadoop instalado y funcionando (versión 3.x recomendada)
 
-Visitar el repositorio de instalacion
-```bash
-https://github.com/jllanosb/apache-hadoop
+```rmarkdown
+Visitar el repositorio de [Instalacion Apache Hadoop](https://github.com/jllanosb/apache-hadoop)
 ```
 4. Usuario sin privilegios de root con permisos sudo
 
@@ -117,14 +116,14 @@ cd ~
 Descargar Ve al sitio oficial de Apache Hive  y copia el enlace de la versión estable más reciente compatible con tu Hadoop.
 
 ```bash
-wget https://archive.apache.org/dist/hive/hive-3.1.3/apache-hive-3.1.3-bin.tar.gz
+wget https://archive.apache.org/dist/hive/hive-4.0.1/apache-hive-4.0.1-bin.tar.gz
 ```
 
 Descomprime el archivo:
 
 ```bash
-tar -xzvf apache-hive-3.1.3-bin.tar.gz
-mv apache-hive-3.1.3-bin hive
+tar -xzvf apache-hive-4.0.1-bin.tar.gz
+mv apache-hive-4.0.1-bin hive
 ```
 
 # ⚙️ Paso 4. Configurar las variables de entorno
