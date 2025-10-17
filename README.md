@@ -282,50 +282,20 @@ Edita (o crea) el archivo hive-site.xml:
 ```bash
 sudo nano hive-site.xml
 ```
-Asegúrate de incluir al menos las siguientes propiedades dentro de < configuration > ... < /configuration >:
+Agregar al final dentro de < configuration > ... < /configuration >:
 ```bash
-  <!-- Directorio del warehouse en HDFS -->
-  <property>
-    <name>hive.metastore.warehouse.dir</name>
-    <value>/user/hive/warehouse</value>
-    <description>Ubicación del warehouse en HDFS</description>
-  </property>
-
-  <!-- Metastore embebido con Derby (solo para pruebas) -->
-  <property>
-    <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:derby:;databaseName=metastore_db;create=true</value>
-  </property>
-
   <property>
     <name>javax.jdo.option.ConnectionDriverName</name>
     <value>org.apache.derby.jdbc.EmbeddedDriver</value>
   </property>
 ```
-Asegúrate de incluir al menos las siguientes propiedades dentro de < configuration > ... < /configuration >
+Agregar 0.0.0.0 < configuration > ... < /configuration >
 ```bash
   <!-- HiveServer2: escuchar en todas las interfaces -->
   <property>
     <name>hive.server2.thrift.bind.host</name>
     <value>0.0.0.0</value>
     <description>Permitir conexiones desde cualquier IP</description>
-  </property>
-
-  <property>
-    <name>hive.server2.thrift.port</name>
-    <value>10000</value>
-  </property>
-
-  <!-- Opcional: desactivar autenticación simple (solo para desarrollo) -->
-  <property>
-    <name>hive.server2.authentication</name>
-    <value>NONE</value>
-  </property>
-
-  <!-- Directorio temporal local (evita errores de /tmp) -->
-  <property>
-    <name>hive.exec.scratchdir</name>
-    <value>/tmp/hive</value>
   </property>
 ```
 Crea el directorio temporal:
@@ -337,12 +307,22 @@ chmod 777 /tmp/hive  # Solo en desarrollo
 
 ## 🔁 Paso 2: Inicializar el esquema del metastore (si no lo has hecho)
 
+1. Detener any Hive or Derby 
+
+```bash
+schematool -initSchema -dbType derby
+```
+2. Remover la existencia de metastore database
+```bash
+rm -rf metastore_db/
+```
+3. Inicializar
 ```bash
 schematool -initSchema -dbType derby
 ```
 ## ▶️ Paso 3: Iniciar HiveServer2
 
-Ejecuta HiveServer2 en segundo plano (o en una sesión screen/tmux):
+Ejecuta HiveServer2 en una nueva terminal:
 
 ```bash
 hiveserver2 &
@@ -382,7 +362,7 @@ Connecting to jdbc:hive2://<IP_PUBLICA>:10000
 Connected to: Apache Hive (version ...)
 Driver: Hive JDBC (version ...)
 Transaction isolation: TRANSACTION_REPEATABLE_READ
-0: jdbc:hive2://161.132.54.162:10000>
+0: jdbc:hive2://<IP_PUBLICA>:10000>
 ```
 ### Opción B: Usar DBeaver, SQuirreL SQL, etc.
 
